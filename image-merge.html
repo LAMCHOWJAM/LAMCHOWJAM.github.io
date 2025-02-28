@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片拼接工具</title>
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 80%;
+            max-width: 800px;
+            text-align: center;
+        }
+
+        /* 文件上传区域 */
+        .upload-area {
+            border: 2px dashed #007BFF;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: rgba(0, 123, 255, 0.1);
+        }
+
+        /* 图片预览区域 */
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .image-preview img {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            cursor: move;
+            /* 新增拖动样式 */
+            opacity: 1;
+            transition: opacity 0.3s;
+            position: relative;
+            transition: transform 0.3s;
+        }
+
+        /* 拖动时的样式 */
+        .image-preview img.dragging {
+            opacity: 0.5;
+            transform: scale(1.1);
+        }
+
+        /* 选中图片的样式 */
+        .image-preview img.selected {
+            border: 2px solid #ff0000;
+        }
+
+        /* 叉叉标志样式 */
+        .delete-icon {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: radial-gradient(circle, rgba(255, 0, 0, 1) 0%, rgba(204, 0, 0, 1) 100%);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            cursor: pointer;
+            z-index: 2;
+            display: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .delete-icon:hover {
+            transform: scale(1.1);
+        }
+
+        .image-preview img.selected + .delete-icon {
+            display: block;
+        }
+
+        /* 导出选项 */
+        .export-options {
+            margin-bottom: 20px;
+        }
+
+        .export-options label {
+            margin-right: 10px;
+        }
+
+        /* 操作按钮 */
+        .actions button {
+            padding: 10px 20px;
+            background: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .actions button:hover {
+            background: #0056b3;
+        }
+
+        /* 拼接结果区域 */
+        .result {
+            margin-top: 20px;
+            display: none; /* 初始隐藏 */
+        }
+
+        .result canvas {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>图片拼接工具</h1>
+        <!-- 文件上传区域 -->
+        <div class="upload-area" id="uploadArea">
+            <p>点击或拖拽图片到此区域上传</p>
+            <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+        </div>
+        <!-- 导出选项 -->
+        <div class="export-options">
+            <label>导出格式：</label>
+            <select id="formatSelect">
+                <option value="png">PNG</option>
+                <option value="jpg">JPG</option>
+                <option value="webp">WEBP</option>
+            </select>
+        </div>
+        <!-- 操作按钮 -->
+        <div class="actions">
+            <button onclick="clearImages()">清空图片</button>
+            <button onclick="exportImage()">导出图片</button>
+        </div>
+        <!-- 拼接结果区域 -->
+        <div class="result" id="resultArea">
+            <canvas id="resultCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 获取元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const formatSelect = document.getElementById('formatSelect');
+        const resultArea = document.getElementById('resultArea');
+        const resultCanvas = document.getElementById('resultCanvas');
+        const ctx = resultCanvas.getContext('2d');
+        let imagePreview;
+
+        let images = [];
+        let draggedImageIndex = null;
+        let selectedImage = null;
+
+        // 点击上传区域触发文件选择
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // 拖拽上传
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        // 文件选择
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            handleFiles(files);
+        });
+
+        // 处理文件
+        function handleFiles(files) {
+            const fileArray = Array.from(files);
+
+            if (!imagePreview) {
+                // 创建预览框
+                imagePreview = document.createElement('div');
+                imagePreview.className = 'image-preview';
+                imagePreview.id = 'imagePreview';
+                const exportOptions = document.querySelector('.export-options');
+                uploadArea.parentNode.insertBefore(imagePreview, exportOptions);
+            }
+
+            // 按顺序处理文件
+            for (let i = 0; i < fileArray.length; i++) {
+                const file = fileArray[i];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        images.push(img);
+                        renderPreview(img);
+                        // 添加图片后直接更新预览图
+                        updatePreview();
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // 渲染预览
+        function renderPreview(img) {
+            const imgWrapper = document.createElement('div');
+            imgWrapper.style.position = 'relative';
+
+            const imgElement = document.createElement('img');
+            imgElement.src = img.src;
+            imgElement.draggable = true;
+
+            // 拖动事件
+            imgElement.addEventListener('dragstart', dragStart);
+            imgElement.addEventListener('dragover', dragOver);
+            imgElement.addEventListener('dragenter', dragEnter);
+            imgElement.addEventListener('dragleave', dragLeave);
+            imgElement.addEventListener('drop', drop);
+            imgElement.addEventListener('dragend', dragEnd);
+
+            // 点击选中图片事件
+            imgElement.addEventListener('click', () => {
+                if (selectedImage) {
+                    selectedImage.classList.remove('selected');
+                    const prevDeleteIcon = selectedImage.nextElementSibling;
+                    if (prevDeleteIcon && prevDeleteIcon.classList.contains('delete-icon')) {
+                        prevDeleteIcon.style.display = 'none';
+                    }
+                }
+                selectedImage = imgElement;
+                selectedImage.classList.add('selected');
+                const deleteIcon = selectedImage.nextElementSibling;
+                if (deleteIcon && deleteIcon.classList.contains('delete-icon')) {
+                    deleteIcon.style.display = 'block';
+                }
+            });
+
+            // 双击图片取消选中事件
+            imgElement.addEventListener('dblclick', () => {
+                if (selectedImage === imgElement) {
+                    selectedImage.classList.remove('selected');
+                    const deleteIcon = selectedImage.nextElementSibling;
+                    if (deleteIcon && deleteIcon.classList.contains('delete-icon')) {
+                        deleteIcon.style.display = 'none';
+                    }
+                    selectedImage = null;
+                }
+            });
+
+            // 创建删除图标
+            const deleteIcon = document.createElement('span');
+            deleteIcon.textContent = '×';
+            deleteIcon.classList.add('delete-icon');
+
+            // 点击叉叉删除图片事件
+            deleteIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = Array.from(imagePreview.children).indexOf(imgWrapper);
+                if (index!== -1) {
+                    // 从数组中移除图片
+                    images.splice(index, 1);
+                    // 移除图片元素和删除图标
+                    imgWrapper.remove();
+                    // 如果没有图片了，移除预览框
+                    if (images.length === 0) {
+                        imagePreview.remove();
+                        imagePreview = null;
+                        resultArea.style.display = 'none'; // 隐藏拼接结果区域
+                    }
+                    // 更新预览图
+                    updatePreview();
+                    // 取消选中状态
+                    if (selectedImage === imgElement) {
+                        selectedImage = null;
+                    }
+                }
+            });
+
+            imgWrapper.appendChild(imgElement);
+            imgWrapper.appendChild(deleteIcon);
+            imagePreview.appendChild(imgWrapper);
+        }
+
+        // 拖动开始
+        function dragStart(e) {
+            const imgWrapper = this.parentNode;
+            draggedImageIndex = Array.from(imagePreview.children).indexOf(imgWrapper);
+            this.classList.add('dragging');
+        }
+
+        // 拖动经过
+        function dragOver(e) {
+            e.preventDefault();
+        }
+
+        // 拖动进入
+        function dragEnter(e) {
+            e.preventDefault();
+            if (draggedImageIndex!== null) {
+                const targetImgWrapper = this.parentNode;
+                const targetIndex = Array.from(imagePreview.children).indexOf(targetImgWrapper);
+                if (draggedImageIndex!== targetIndex) {
+                    this.style.transform = 'scale(1.2)';
+                }
+            }
+        }
+
+        // 拖动离开
+        function dragLeave() {
+            this.style.transform = 'scale(1)';
+        }
+
+        // 放下
+        function drop() {
+            const targetImgWrapper = this.parentNode;
+            const targetIndex = Array.from(imagePreview.children).indexOf(targetImgWrapper);
+            const draggedImgWrapper = imagePreview.children[draggedImageIndex];
+            if (draggedImageIndex!== null && draggedImageIndex!== targetIndex) {
+                // 交换数组中的元素
+                const draggedImage = images[draggedImageIndex];
+                images.splice(draggedImageIndex, 1);
+                images.splice(targetIndex, 0, draggedImage);
+
+                // 重新渲染预览区域
+                imagePreview.innerHTML = '';
+                for (const img of images) {
+                    renderPreview(img);
+                }
+                // 拖动后更新预览图
+                updatePreview();
+            }
+        }
+
+        // 拖动结束
+        function dragEnd() {
+            this.classList.remove('dragging');
+            draggedImageIndex = null;
+            const allImages = imagePreview.querySelectorAll('img');
+            allImages.forEach(img => {
+                img.style.transform = 'scale(1)';
+            });
+        }
+
+        // 更新预览图
+        function updatePreview() {
+            if (images.length === 0) {
+                resultCanvas.width = 0;
+                resultCanvas.height = 0;
+                resultArea.style.display = 'none'; // 隐藏拼接结果区域
+                return;
+            }
+
+            // 计算画布尺寸
+            let totalHeight = 0;
+            let maxWidth = 0;
+            for (const img of images) {
+                totalHeight += img.height;
+                maxWidth = Math.max(maxWidth, img.width);
+            }
+
+            // 设置画布尺寸
+            resultCanvas.width = maxWidth;
+            resultCanvas.height = totalHeight;
+
+            // 绘制图片
+            let y = 0;
+            for (const img of images) {
+                ctx.drawImage(img, 0, y);
+                y += img.height;
+            }
+
+            resultArea.style.display = 'block'; // 显示拼接结果区域
+        }
+
+        // 清空图片
+        function clearImages() {
+            images = [];
+            if (imagePreview) {
+                imagePreview.innerHTML = '';
+                imagePreview.remove();
+                imagePreview = null;
+            }
+            resultArea.style.display = 'none'; // 隐藏拼接结果区域
+            ctx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+            // 重置文件输入框的值
+            fileInput.value = '';
+        }
+
+        // 导出图片
+        function exportImage() {
+            if (images.length === 0) {
+                alert('请先添加图片！');
+                return;
+            }
+
+            const format = formatSelect.value;
+            let dataURL;
+            if (format === 'jpg') {
+                // 导出 JPG 格式时指定质量为 0.9（可根据需要调整）
+                dataURL = resultCanvas.toDataURL('image/jpeg', 0.9);
+            } else {
+                dataURL = resultCanvas.toDataURL(`image/${format}`);
+            }
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `merged-image.${format}`;
+            link.click();
+        }
+    </script>
+</body>
+
+</html>

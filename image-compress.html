@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片压缩工具</title>
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            position: relative;
+        }
+
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            font-size: 2.5rem;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 80%;
+            max-width: 800px;
+            text-align: center;
+            position: relative;
+        }
+
+        /* 文件上传区域 */
+        .upload-area {
+            border: 2px dashed #007BFF;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            background: rgba(0, 123, 255, 0.1);
+            transform: scale(1.02);
+        }
+
+        /* 图片预览区域 */
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .image-preview img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .image-preview img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 压缩选项 */
+        .compress-options {
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .compress-options label {
+            margin-right: 10px;
+        }
+
+        /* 操作按钮 */
+        .actions button {
+            padding: 10px 20px;
+            background: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .actions button:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 有颜色的无极滑动条样式 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 200px;
+            height: 8px;
+            background: #ddd;
+            border-radius: 4px;
+            outline: none;
+            transition: background 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            background: linear-gradient(to right, #007BFF 0%, #007BFF var(--value), #ddd var(--value), #ddd 100%);
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #007BFF;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        input[type="range"]::-moz-range-track {
+            height: 8px;
+            background: linear-gradient(to right, #007BFF 0%, #007BFF var(--value), #ddd var(--value), #ddd 100%);
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #007BFF;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        /* 进度条和文字容器 */
+        .range-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 固定宽度的文字容器 */
+        .text-container {
+            display: inline-flex;
+            gap: 5px;
+        }
+
+        .text-container span {
+            min-width: 100px;
+            text-align: left;
+        }
+
+        /* 返回主菜单按钮样式 */
+        .back-to-menu {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .back-to-menu:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+
+<body>
+    <a href="index.html" class="back-to-menu">返回主菜单</a>
+    <div class="container">
+        <h1>图片压缩工具</h1>
+        <!-- 文件上传区域 -->
+        <div class="upload-area" id="uploadArea">
+            <p>点击或拖拽图片到此区域上传</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+        <!-- 压缩选项 -->
+        <div class="compress-options" id="compressOptions">
+            <label>压缩质量：</label>
+            <div class="range-container">
+                <input type="range" id="qualityRange" min="0.1" max="1" step="0.01" value="0.8">
+                <div class="text-container">
+                    <span id="qualityValue">0.8</span>
+                    <span id="compressedSize">压缩后大小：未计算</span>
+                </div>
+            </div>
+        </div>
+        <!-- 操作按钮 -->
+        <div class="actions">
+            <button onclick="compressImage()" id="compressButton" disabled>压缩图片</button>
+        </div>
+        <!-- 图片预览区域 -->
+        <div class="image-preview" id="imagePreview"></div>
+    </div>
+
+    <script>
+        // 获取元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const qualityRange = document.getElementById('qualityRange');
+        const qualityValue = document.getElementById('qualityValue');
+        const compressedSize = document.getElementById('compressedSize');
+        const imagePreview = document.getElementById('imagePreview');
+        const compressOptions = document.getElementById('compressOptions');
+        const compressButton = document.getElementById('compressButton');
+
+        let selectedImage;
+
+        // 点击上传区域触发文件选择
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // 拖拽上传
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // 文件选择
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // 处理文件
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    selectedImage = img;
+                    imagePreview.innerHTML = '';
+                    imagePreview.appendChild(img);
+                    compressOptions.style.display = 'block';
+                    compressButton.disabled = false;
+                    updateCompressedSize();
+                    updateRangeColor();
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 更新压缩质量显示
+        qualityRange.addEventListener('input', () => {
+            qualityValue.textContent = qualityRange.value;
+            requestAnimationFrame(() => {
+                updateCompressedSize();
+                updateRangeColor();
+            });
+        });
+
+        // 计算并更新压缩后的图片大小
+        function updateCompressedSize() {
+            if (!selectedImage) {
+                compressedSize.textContent = '压缩后大小：未选择图片';
+                return;
+            }
+
+            const quality = parseFloat(qualityRange.value);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = selectedImage.naturalWidth;
+            canvas.height = selectedImage.naturalHeight;
+            ctx.drawImage(selectedImage, 0, 0, canvas.width, canvas.height);
+
+            const compressedDataURL = canvas.toDataURL('image/jpeg', quality);
+            const byteCharacters = atob(compressedDataURL.split(',')[1]);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const sizeInBytes = byteArray.length;
+            const sizeInKB = (sizeInBytes / 1024).toFixed(2);
+            compressedSize.textContent = `压缩后大小：${sizeInKB} KB`;
+        }
+
+        // 更新滑动条颜色
+        function updateRangeColor() {
+            const value = ((qualityRange.value - qualityRange.min) / (qualityRange.max - qualityRange.min)) * 100;
+            qualityRange.style.setProperty('--value', `${value}%`);
+        }
+
+        // 压缩图片
+        function compressImage() {
+            if (!selectedImage) {
+                alert('请先选择一张图片！');
+                return;
+            }
+
+            const quality = parseFloat(qualityRange.value);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = selectedImage.naturalWidth;
+            canvas.height = selectedImage.naturalHeight;
+            ctx.drawImage(selectedImage, 0, 0, canvas.width, canvas.height);
+
+            const compressedDataURL = canvas.toDataURL('image/jpeg', quality);
+            const compressedImg = new Image();
+            compressedImg.src = compressedDataURL;
+
+            imagePreview.innerHTML = '';
+            imagePreview.appendChild(compressedImg);
+
+            const link = document.createElement('a');
+            link.href = compressedDataURL;
+            link.download = 'compressed-image.jpg';
+            link.click();
+        }
+    </script>
+</body>
+
+</html>
