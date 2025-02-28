@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片工具包导航页</title>
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 容器 */
+        .container {
+            text-align: center;
+            max-width: 1200px;
+            padding: 20px;
+        }
+
+        /* 标题 */
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 描述文本 */
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            color: #e0e0e0;
+        }
+
+        /* 导航卡片容器 */
+        .nav-cards {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        /* 单个卡片 */
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 卡片图标 */
+        .card i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        /* 卡片标题 */
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        /* 卡片描述 */
+        .card p {
+            font-size: 1rem;
+            color: #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        /* 卡片按钮 */
+        .card a {
+            text-decoration: none;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            transition: background 0.3s ease;
+            cursor: pointer;
+        }
+
+        .card a:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+    <!-- 引入字体图标库 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <h1>图片工具包</h1>
+        <p>选择以下工具，快速处理您的图片</p>
+        <div class="nav-cards">
+            <!-- 图片拼接 -->
+            <div class="card">
+                <i class="fas fa-images"></i>
+                <h2>图片拼接</h2>
+                <p>将多张图片拼接成一张</p>
+                <a href="image-merge.html">开始使用</a>
+            </div>
+            <!-- 压缩图片 -->
+            <div class="card">
+                <i class="fas fa-compress"></i>
+                <h2>压缩图片</h2>
+                <p>减小图片大小，优化加载速度</p>
+                <a href="image-compress.html">开始使用</a>
+            </div>
+            <!-- 智能抠图 -->
+            <div class="card">
+                <i class="fas fa-cut"></i>
+                <h2>智能抠图</h2>
+                <p>快速去除图片背景</p>
+                <a id="cutoutBtn" href="#">开始使用</a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
