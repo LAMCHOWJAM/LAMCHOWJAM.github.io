@@ -103,6 +103,8 @@
     </style>
     <!-- 引入字体图标库 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <!-- 引入 SweetAlert2 库的 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.3/dist/sweetalert2.min.css">
 </head>
 
 <body>
@@ -133,6 +135,30 @@
             </div>
         </div>
     </div>
+    <!-- 引入 SweetAlert2 库的 JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.3/dist/sweetalert2.all.min.js"></script>
+    <script>
+        // 获取智能抠图按钮元素
+        const cutoutBtn = document.getElementById('cutoutBtn');
+        // 为按钮添加点击事件监听器
+        cutoutBtn.addEventListener('click', function (event) {
+            // 阻止按钮默认跳转行为
+            event.preventDefault();
+            // 使用 SweetAlert2 显示自定义对话框
+            Swal.fire({
+                title: '提示',
+                text: '功能尚未开放，敬请期待',
+                icon: 'info',
+                confirmButtonText: '确定',
+                customClass: {
+                    popup: 'swal2-popup',
+                    title: 'swal2-title',
+                    content: 'swal2-content',
+                    confirmButton: 'swal2-confirm'
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>
