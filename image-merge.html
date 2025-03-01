@@ -163,8 +163,8 @@
         <div class="export-options">
             <label>导出格式：</label>
             <select id="formatSelect">
-                <option value="png">PNG</option>
                 <option value="jpg">JPG</option>
+                <option value="png">PNG</option>
                 <option value="webp">WEBP</option>
             </select>
         </div>
@@ -239,9 +239,10 @@
                 reader.onload = (e) => {
                     const img = new Image();
                     img.src = e.target.result;
+                    img.name = file.name; // 添加文件名属性
                     img.onload = () => {
                         images.push(img);
-                        renderPreview(img);
+                        renderPreview(img, file.name); // 传递文件名
                         // 添加图片后直接更新预览图
                         updatePreview();
                     };
@@ -251,9 +252,16 @@
         }
 
         // 渲染预览
-        function renderPreview(img) {
+        function renderPreview(img, fileName) {
             const imgWrapper = document.createElement('div');
             imgWrapper.style.position = 'relative';
+
+            // 添加文件名显示
+            const fileNameElement = document.createElement('p');
+            fileNameElement.textContent = fileName; // 显示文件名
+            fileNameElement.style.margin = '0 0 5px 0'; // 调整样式
+            fileNameElement.style.fontSize = '12px'; // 调整字体大小
+            fileNameElement.style.color = '#fff'; // 调整字体颜色
 
             const imgElement = document.createElement('img');
             imgElement.src = img.src;
@@ -325,8 +333,10 @@
                 }
             });
 
-            imgWrapper.appendChild(imgElement);
-            imgWrapper.appendChild(deleteIcon);
+            // 将文件名和图片添加到容器中
+            imgWrapper.appendChild(fileNameElement); // 先添加文件名
+            imgWrapper.appendChild(imgElement); // 再添加图片
+            imgWrapper.appendChild(deleteIcon); // 最后添加删除图标
             imagePreview.appendChild(imgWrapper);
         }
 
@@ -373,7 +383,9 @@
                 // 重新渲染预览区域
                 imagePreview.innerHTML = '';
                 for (const img of images) {
-                    renderPreview(img);
+                    // 获取文件名
+                    const fileName = img.name || '未命名'; // 如果图片没有名称，使用默认值
+                    renderPreview(img, fileName); // 传递文件名
                 }
                 // 拖动后更新预览图
                 updatePreview();
