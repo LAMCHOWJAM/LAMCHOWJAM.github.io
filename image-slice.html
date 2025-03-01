@@ -52,6 +52,9 @@
         .image-preview {
             position: relative;
             margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
         }
 
         .image-preview img {
@@ -63,11 +66,29 @@
 
         .slice-line {
             position: absolute;
-            left: 10%; /* 虚线起点 */
-            right: 10%; /* 虚线终点 */
+            left: 10%;
+            right: 10%;
             height: 2px;
             background: repeating-linear-gradient(to right, #fff, #fff 10px, transparent 10px, transparent 20px);
-            pointer-events: none; /* 防止切割线干扰拖动 */
+            pointer-events: none;
+        }
+
+        .image-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-right: 20px;
+        }
+
+        .image-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .image-width-info {
+            margin-top: 10px;
+            text-align: center;
         }
 
         .actions {
@@ -130,7 +151,7 @@
             padding: 10px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
-            display: none; /* 初始隐藏 */
+            display: none;
         }
 
         .slice-preview h2 {
@@ -148,9 +169,45 @@
             font-size: 14px;
             color: #fff;
         }
+
+        .resize-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            color: #fff;
+            z-index: 1000;
+        }
+
+        .resize-modal input {
+            padding: 10px;
+            border: 1px solid #007BFF;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            margin: 5px;
+            width: 100px;
+        }
+
+        .resize-modal button {
+            padding: 10px 20px;
+            background: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .resize-modal button:hover {
+            background: #0056b3;
+        }
     </style>
-    <!-- 引入 JSZip 库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 
 <body>
@@ -161,16 +218,25 @@
             <input type="file" id="fileInput" accept="image/*" style="display: none;">
         </div>
         <div class="image-preview" id="imagePreview">
-            <img id="originalImage" src="#" alt="原图" class="hidden">
-            <p id="imageHeight" class="hidden">原图高度: <span id="heightValue">0</span>px</p>
+            <div class="image-info">
+                <p id="imageHeight" class="hidden">高度: <span id="heightValue">0</span>px</p>
+            </div>
+            <div>
+                <img id="originalImage" src="#" alt="原图" class="hidden">
+                <div class="image-width-info">
+                    <p id="imageWidth" class="hidden">宽度: <span id="widthValue">0</span>px</p>
+                </div>
+            </div>
             <div id="sliceLines"></div>
         </div>
         <div class="actions">
             <label for="sliceCount">切片数量:</label>
-            <input type="number" id="sliceCount" min="1" value=""> <!-- 移除 placeholder -->
+            <input type="number" id="sliceCount" min="1" value="">
             <button onclick="sliceImage()" id="sliceButton" disabled>切片</button>
-            <button onclick="saveSlices()" id="saveButton" class="hidden">保存切片</button>
+            <button onclick="saveImage()" id="saveImageButton" class="hidden">保存图片</button>
+            <button onclick="saveSlices()" id="saveSlicesButton" class="hidden">保存切片</button>
             <button onclick="clearImages()" id="clearButton" disabled>清除</button>
+            <button onclick="openResizeModal()" id="resizeButton" disabled>修改图片尺寸</button>
         </div>
         <div class="slice-preview" id="slicePreview">
             <h2>切片预览</h2>
@@ -178,48 +244,55 @@
         </div>
     </div>
 
+    <!-- 修改尺寸弹窗 -->
+    <div id="resizeModal" class="resize-modal hidden">
+        <h2>修改图片尺寸</h2>
+        <p>当前尺寸: <span id="currentWidth">0</span> x <span id="currentHeight">0</span></p>
+        <label for="newWidth">宽度:</label>
+        <input type="number" id="newWidth" min="1">
+        <label for="newHeight">高度:</label>
+        <input type="number" id="newHeight" min="1">
+        <button onclick="applyResize()">应用</button>
+        <button onclick="closeResizeModal()">关闭</button>
+    </div>
+
     <script>
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const originalImage = document.getElementById('originalImage');
         const sliceButton = document.getElementById('sliceButton');
-        const saveButton = document.getElementById('saveButton');
+        const saveImageButton = document.getElementById('saveImageButton');
+        const saveSlicesButton = document.getElementById('saveSlicesButton');
         const clearButton = document.getElementById('clearButton');
+        const resizeButton = document.getElementById('resizeButton');
         const slicesContainer = document.getElementById('slicesContainer');
         const sliceCountInput = document.getElementById('sliceCount');
         const sliceLinesContainer = document.getElementById('sliceLines');
         const slicePreview = document.getElementById('slicePreview');
         const imageHeightElement = document.getElementById('imageHeight');
         const heightValueElement = document.getElementById('heightValue');
+        const imageWidthElement = document.getElementById('imageWidth');
+        const widthValueElement = document.getElementById('widthValue');
+        const resizeModal = document.getElementById('resizeModal');
+        const currentWidthElement = document.getElementById('currentWidth');
+        const currentHeightElement = document.getElementById('currentHeight');
+        const newWidthInput = document.getElementById('newWidth');
+        const newHeightInput = document.getElementById('newHeight');
 
         let selectedImage;
-        let sliceImages = [];
+        let sliceImages = []; // 用于存储切片图片
 
+        // 文件上传逻辑
         uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-        });
-
+        uploadArea.addEventListener('dragover', (e) => e.preventDefault());
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
             const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
+            if (files.length > 0) handleFile(files[0]);
         });
-
         fileInput.addEventListener('change', (e) => {
             const files = e.target.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
+            if (files.length > 0) handleFile(files[0]);
         });
 
         function handleFile(file) {
@@ -233,17 +306,20 @@
                     originalImage.classList.remove('hidden');
                     sliceButton.disabled = false;
                     clearButton.disabled = false;
-                    saveButton.classList.add('hidden');
-                    sliceImages = [];
-                    updateSliceLines();
-                    // 显示图片高度信息
+                    resizeButton.disabled = false;
+                    saveImageButton.classList.add('hidden');
+                    saveSlicesButton.classList.add('hidden');
                     imageHeightElement.classList.remove('hidden');
+                    imageWidthElement.classList.remove('hidden');
                     heightValueElement.textContent = img.height;
+                    widthValueElement.textContent = img.width;
+                    updateSliceLines(); // 初始化切片虚线
                 };
             };
             reader.readAsDataURL(file);
         }
 
+        // 更新切片虚线
         function updateSliceLines() {
             sliceLinesContainer.innerHTML = '';
             const sliceCount = parseInt(sliceCountInput.value);
@@ -260,6 +336,7 @@
             }
         }
 
+        // 切片逻辑
         function sliceImage() {
             if (!selectedImage) {
                 alert('请先选择一张图片！');
@@ -278,7 +355,6 @@
             canvas.height = selectedImage.naturalHeight;
             ctx.drawImage(selectedImage, 0, 0, canvas.width, canvas.height);
 
-            // 绘制白色切割线
             const sliceHeight = canvas.height / sliceCount;
             for (let i = 1; i < sliceCount; i++) {
                 const y = i * sliceHeight;
@@ -291,20 +367,18 @@
                 ctx.stroke();
             }
 
-            // 显示带切割线的原图
             const slicedImage = new Image();
             slicedImage.src = canvas.toDataURL();
             originalImage.src = slicedImage.src;
 
-            // 切片图片
             slicesContainer.innerHTML = '';
-            sliceImages = [];
+            sliceImages = []; // 清空之前的切片
 
             for (let i = 0; i < sliceCount; i++) {
                 const sliceCanvas = document.createElement('canvas');
                 const sliceCtx = sliceCanvas.getContext('2d');
                 sliceCanvas.width = canvas.width;
-                sliceCanvas.height = i === sliceCount - 1? canvas.height - i * sliceHeight : sliceHeight;
+                sliceCanvas.height = i === sliceCount - 1 ? canvas.height - i * sliceHeight : sliceHeight;
 
                 sliceCtx.drawImage(
                     canvas,
@@ -317,74 +391,143 @@
                 const sliceImage = new Image();
                 sliceImage.src = sliceCanvas.toDataURL();
 
-                // 创建一个容器来包裹切片图和切片高度信息
                 const sliceItem = document.createElement('div');
                 sliceItem.className = 'slice-item';
 
-                // 创建一个元素来显示切片高度
                 const heightInfo = document.createElement('p');
                 heightInfo.textContent = `${sliceCanvas.height}px`;
 
-                // 添加切片高度信息到容器
                 sliceItem.appendChild(heightInfo);
-
-                // 添加切片图到容器
                 sliceItem.appendChild(sliceImage);
-
-                // 将包裹元素添加到切片容器中
                 slicesContainer.appendChild(sliceItem);
 
-                sliceImages.push(sliceCanvas.toDataURL());
+                // 将切片保存到 sliceImages 数组中
+                sliceCanvas.toBlob((blob) => {
+                    sliceImages.push(blob);
+                }, 'image/jpeg', 1.0);
             }
 
-            saveButton.classList.remove('hidden');
-            // 显示切片预览框
+            saveSlicesButton.classList.remove('hidden');
             slicePreview.style.display = 'block';
         }
 
-        async function saveSlices() {
+        // 保存图片
+        function saveImage() {
+            if (!selectedImage) {
+                alert('请先修改图片尺寸！');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = selectedImage.width;
+            canvas.height = selectedImage.height;
+            ctx.drawImage(selectedImage, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob((blob) => {
+                saveAs(blob, 'image.jpg');
+            }, 'image/jpeg', 1.0);
+        }
+
+        // 保存切片为压缩包
+        function saveSlices() {
             if (sliceImages.length === 0) {
                 alert('请先进行切片操作！');
                 return;
             }
 
             const zip = new JSZip();
-            for (let i = 0; i < sliceImages.length; i++) {
-                const dataUrl = sliceImages[i];
-                const byteCharacters = atob(dataUrl.split(',')[1]);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let j = 0; j < byteCharacters.length; j++) {
-                    byteNumbers[j] = byteCharacters.charCodeAt(j);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                zip.file(`slice_${i + 1}.png`, byteArray);
-            }
+            sliceImages.forEach((blob, index) => {
+                zip.file(`slice_${index + 1}.jpg`, blob);
+            });
 
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(zipBlob);
-            link.download = 'slices.zip';
-            link.click();
+            zip.generateAsync({ type: 'blob' }).then((content) => {
+                saveAs(content, 'slices.zip');
+            });
         }
 
+        // 修改尺寸逻辑
+        function openResizeModal() {
+            if (!selectedImage) return;
+            currentWidthElement.textContent = selectedImage.width;
+            currentHeightElement.textContent = selectedImage.height;
+            newWidthInput.value = selectedImage.width;
+            newHeightInput.value = selectedImage.height;
+            resizeModal.classList.remove('hidden');
+        }
+
+        function closeResizeModal() {
+            resizeModal.classList.add('hidden');
+        }
+
+        function applyResize() {
+            const newWidth = parseInt(newWidthInput.value);
+            const newHeight = parseInt(newHeightInput.value);
+
+            if (isNaN(newWidth) || isNaN(newHeight)) {
+                alert('请输入有效的宽度和高度！');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            ctx.drawImage(selectedImage, 0, 0, newWidth, newHeight);
+
+            const resizedImage = new Image();
+            resizedImage.src = canvas.toDataURL();
+            resizedImage.onload = () => {
+                selectedImage = resizedImage;
+                originalImage.src = resizedImage.src;
+                currentWidthElement.textContent = newWidth;
+                currentHeightElement.textContent = newHeight;
+                heightValueElement.textContent = newHeight;
+                widthValueElement.textContent = newWidth;
+                saveImageButton.classList.remove('hidden');
+                closeResizeModal();
+            };
+        }
+
+        // 清除逻辑
         function clearImages() {
             originalImage.src = '#';
             originalImage.classList.add('hidden');
             slicesContainer.innerHTML = '';
             sliceLinesContainer.innerHTML = '';
             sliceButton.disabled = true;
-            saveButton.classList.add('hidden');
+            saveImageButton.classList.add('hidden');
+            saveSlicesButton.classList.add('hidden');
             clearButton.disabled = true;
+            resizeButton.disabled = true;
             fileInput.value = '';
             selectedImage = null;
             sliceImages = [];
-            // 隐藏切片预览框
             slicePreview.style.display = 'none';
-            // 隐藏图片高度信息
             imageHeightElement.classList.add('hidden');
+            imageWidthElement.classList.add('hidden');
             heightValueElement.textContent = '0';
+            widthValueElement.textContent = '0';
         }
 
+        // 按比例缩放
+        newWidthInput.addEventListener('input', () => {
+            const newWidth = parseInt(newWidthInput.value);
+            if (!isNaN(newWidth)) {
+                const ratio = selectedImage.height / selectedImage.width;
+                newHeightInput.value = Math.round(newWidth * ratio);
+            }
+        });
+
+        newHeightInput.addEventListener('input', () => {
+            const newHeight = parseInt(newHeightInput.value);
+            if (!isNaN(newHeight)) {
+                const ratio = selectedImage.width / selectedImage.height;
+                newWidthInput.value = Math.round(newHeight * ratio);
+            }
+        });
+
+        // 输入切片数量时更新虚线
         sliceCountInput.addEventListener('input', () => {
             if (selectedImage) {
                 updateSliceLines();
