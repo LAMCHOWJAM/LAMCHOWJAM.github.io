@@ -171,6 +171,7 @@
         <!-- 操作按钮 -->
         <div class="actions">
             <button onclick="clearImages()">清空图片</button>
+            <button onclick="sortImages()">一键排序</button>
             <button onclick="exportImage()">导出图片</button>
         </div>
         <!-- 拼接结果区域 -->
@@ -445,6 +446,26 @@
             ctx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
             // 重置文件输入框的值
             fileInput.value = '';
+        }
+
+        // 一键排序
+        function sortImages() {
+            if (images.length === 0) {
+                alert('请先添加图片！');
+                return;
+            }
+
+            // 根据文件名排序
+            images.sort((a, b) => a.name.localeCompare(b.name));
+
+            // 重新渲染预览区域
+            imagePreview.innerHTML = '';
+            for (const img of images) {
+                renderPreview(img, img.name); // 传递文件名
+            }
+
+            // 更新拼接结果
+            updatePreview();
         }
 
         // 导出图片
