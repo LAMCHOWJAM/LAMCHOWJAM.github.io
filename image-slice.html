@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.png" type="image/png">
+    <title>长图切片工具</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 90%;
+            max-width: 1200px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .upload-area {
+            border: 2px dashed #007BFF;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: rgba(0, 123, 255, 0.1);
+        }
+
+        .image-preview {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .slice-line {
+            position: absolute;
+            left: 0;
+            /* 确保虚线不超过图片宽度 */
+            width: 100%;
+            height: 2px;
+            background: repeating-linear-gradient(to right, #fff, #fff 10px, transparent 10px, transparent 20px);
+            pointer-events: none;
+        }
+
+        .actions {
+            margin-top: 20px;
+        }
+
+        .actions button {
+            padding: 10px 20px;
+            background: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .actions button:hover {
+            background: #0056b3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .slices-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .slices-container img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .slice-preview {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            /* 初始隐藏切片预览框 */
+            display: none;
+        }
+
+        .slice-preview h2 {
+            margin-bottom: 10px;
+        }
+
+        /* 美化切片数量输入框 */
+        #sliceCount {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            outline: none;
+        }
+
+        #sliceCount::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .slice-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+    <!-- 引入 JSZip 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>长图切片工具</h1>
+        <div class="upload-area" id="uploadArea">
+            <p>点击或拖拽长图到此区域上传</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+        <div class="image-preview" id="imagePreview">
+            <img id="originalImage" src="#" alt="原图" class="hidden">
+            <!-- 新增用于显示图片高度的元素 -->
+            <p id="imageHeight" class="hidden">原图高度: <span id="heightValue">0</span>px</p>
+            <div id="sliceLines"></div>
+        </div>
+        <div class="actions">
+            <label for="sliceCount">切片数量:</label>
+            <input type="number" id="sliceCount" min="1" value="" placeholder="请输入切片数量">
+            <button onclick="sliceImage()" id="sliceButton" disabled>切片</button>
+            <button onclick="saveSlices()" id="saveButton" class="hidden">保存切片</button>
+            <button onclick="clearImages()" id="clearButton" disabled>清除</button>
+        </div>
+        <div class="slice-preview" id="slicePreview">
+            <h2>切片预览</h2>
+            <div class="slices-container" id="slicesContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const originalImage = document.getElementById('originalImage');
+        const sliceButton = document.getElementById('sliceButton');
+        const saveButton = document.getElementById('saveButton');
+        const clearButton = document.getElementById('clearButton');
+        const slicesContainer = document.getElementById('slicesContainer');
+        const sliceCountInput = document.getElementById('sliceCount');
+        const sliceLinesContainer = document.getElementById('sliceLines');
+        const slicePreview = document.getElementById('slicePreview');
+        // 获取用于显示图片高度的元素
+        const imageHeightElement = document.getElementById('imageHeight');
+        const heightValueElement = document.getElementById('heightValue');
+
+        let selectedImage;
+        let sliceImages = [];
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    selectedImage = img;
+                    originalImage.src = img.src;
+                    originalImage.classList.remove('hidden');
+                    sliceButton.disabled = false;
+                    clearButton.disabled = false;
+                    saveButton.classList.add('hidden');
+                    sliceImages = [];
+                    updateSliceLines();
+                    // 显示图片高度信息
+                    imageHeightElement.classList.remove('hidden');
+                    heightValueElement.textContent = img.height;
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateSliceLines() {
+            sliceLinesContainer.innerHTML = '';
+            const sliceCount = parseInt(sliceCountInput.value);
+            if (isNaN(sliceCount)) return;
+
+            const imageHeight = originalImage.clientHeight;
+            const sliceHeight = imageHeight / sliceCount;
+
+            for (let i = 1; i < sliceCount; i++) {
+                const line = document.createElement('div');
+                line.className = 'slice-line';
+                line.style.top = `${i * sliceHeight}px`;
+                sliceLinesContainer.appendChild(line);
+            }
+        }
+
+        function sliceImage() {
+            if (!selectedImage) {
+                alert('请先选择一张图片！');
+                return;
+            }
+
+            const sliceCount = parseInt(sliceCountInput.value);
+            if (isNaN(sliceCount)) {
+                alert('请输入有效的切片数量！');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = selectedImage.naturalWidth;
+            canvas.height = selectedImage.naturalHeight;
+            ctx.drawImage(selectedImage, 0, 0, canvas.width, canvas.height);
+
+            // 绘制白色切割线
+            const sliceHeight = canvas.height / sliceCount;
+            for (let i = 1; i < sliceCount; i++) {
+                const y = i * sliceHeight;
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([10, 10]);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // 显示带切割线的原图
+            const slicedImage = new Image();
+            slicedImage.src = canvas.toDataURL();
+            originalImage.src = slicedImage.src;
+
+            // 切片图片
+            slicesContainer.innerHTML = '';
+            sliceImages = [];
+
+            for (let i = 0; i < sliceCount; i++) {
+                const sliceCanvas = document.createElement('canvas');
+                const sliceCtx = sliceCanvas.getContext('2d');
+                sliceCanvas.width = canvas.width;
+                sliceCanvas.height = i === sliceCount - 1? canvas.height - i * sliceHeight : sliceHeight;
+
+                sliceCtx.drawImage(
+                    canvas,
+                    0, i * sliceHeight,
+                    canvas.width, sliceCanvas.height,
+                    0, 0,
+                    canvas.width, sliceCanvas.height
+                );
+
+                const sliceImage = new Image();
+                sliceImage.src = sliceCanvas.toDataURL();
+
+                // 创建一个容器来包裹切片图和切片高度信息
+                const sliceItem = document.createElement('div');
+                sliceItem.className = 'slice-item';
+
+                // 创建一个元素来显示切片高度
+                const heightInfo = document.createElement('p');
+                // 添加 "高度" 二字和 px 单位
+                heightInfo.textContent = `高度: ${sliceCanvas.height}px`;
+
+                // 添加切片高度信息到容器
+                sliceItem.appendChild(heightInfo);
+
+                // 添加切片图到容器
+                sliceItem.appendChild(sliceImage);
+
+                // 将包裹元素添加到切片容器中
+                slicesContainer.appendChild(sliceItem);
+
+                sliceImages.push(sliceCanvas.toDataURL());
+            }
+
+            saveButton.classList.remove('hidden');
+            // 显示切片预览框
+            slicePreview.style.display = 'block';
+        }
+
+        async function saveSlices() {
+            if (sliceImages.length === 0) {
+                alert('请先进行切片操作！');
+                return;
+            }
+
+            const zip = new JSZip();
+            for (let i = 0; i < sliceImages.length; i++) {
+                const dataUrl = sliceImages[i];
+                const byteCharacters = atob(dataUrl.split(',')[1]);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let j = 0; j < byteCharacters.length; j++) {
+                    byteNumbers[j] = byteCharacters.charCodeAt(j);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                zip.file(`slice_${i + 1}.png`, byteArray);
+            }
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(zipBlob);
+            link.download = 'slices.zip';
+            link.click();
+        }
+
+        function clearImages() {
+            originalImage.src = '#';
+            originalImage.classList.add('hidden');
+            slicesContainer.innerHTML = '';
+            sliceLinesContainer.innerHTML = '';
+            sliceButton.disabled = true;
+            saveButton.classList.add('hidden');
+            clearButton.disabled = true;
+            fileInput.value = '';
+            selectedImage = null;
+            sliceImages = [];
+            // 隐藏切片预览框
+            slicePreview.style.display = 'none';
+            // 隐藏图片高度信息
+            imageHeightElement.classList.add('hidden');
+            heightValueElement.textContent = '0';
+        }
+
+        sliceCountInput.addEventListener('input', () => {
+            if (selectedImage) {
+                updateSliceLines();
+            }
+        });
+    </script>
+</body>
+
+</html>
