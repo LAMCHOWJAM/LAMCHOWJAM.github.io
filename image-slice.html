@@ -63,12 +63,11 @@
 
         .slice-line {
             position: absolute;
-            left: 0;
-            /* 确保虚线不超过图片宽度 */
-            width: 100%;
+            left: 10%; /* 虚线起点 */
+            right: 10%; /* 虚线终点 */
             height: 2px;
             background: repeating-linear-gradient(to right, #fff, #fff 10px, transparent 10px, transparent 20px);
-            pointer-events: none;
+            pointer-events: none; /* 防止切割线干扰拖动 */
         }
 
         .actions {
@@ -83,10 +82,28 @@
             border-radius: 5px;
             cursor: pointer;
             margin: 5px;
+            transition: background 0.3s ease;
         }
 
         .actions button:hover {
             background: #0056b3;
+        }
+
+        .actions input[type="number"] {
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+            width: 80px;
+            text-align: center;
+            margin-right: 10px;
+        }
+
+        .actions input[type="number"]:focus {
+            outline: none;
+            border-color: #007BFF;
         }
 
         .hidden {
@@ -113,33 +130,23 @@
             padding: 10px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
-            /* 初始隐藏切片预览框 */
-            display: none;
+            display: none; /* 初始隐藏 */
         }
 
         .slice-preview h2 {
             margin-bottom: 10px;
         }
 
-        /* 美化切片数量输入框 */
-        #sliceCount {
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            margin: 5px;
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-            outline: none;
-        }
-
-        #sliceCount::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
         .slice-item {
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .slice-item p {
+            margin: 0;
+            font-size: 14px;
+            color: #fff;
         }
     </style>
     <!-- 引入 JSZip 库 -->
@@ -155,13 +162,12 @@
         </div>
         <div class="image-preview" id="imagePreview">
             <img id="originalImage" src="#" alt="原图" class="hidden">
-            <!-- 新增用于显示图片高度的元素 -->
             <p id="imageHeight" class="hidden">原图高度: <span id="heightValue">0</span>px</p>
             <div id="sliceLines"></div>
         </div>
         <div class="actions">
             <label for="sliceCount">切片数量:</label>
-            <input type="number" id="sliceCount" min="1" value="" placeholder="请输入切片数量">
+            <input type="number" id="sliceCount" min="1" value=""> <!-- 移除 placeholder -->
             <button onclick="sliceImage()" id="sliceButton" disabled>切片</button>
             <button onclick="saveSlices()" id="saveButton" class="hidden">保存切片</button>
             <button onclick="clearImages()" id="clearButton" disabled>清除</button>
@@ -183,7 +189,6 @@
         const sliceCountInput = document.getElementById('sliceCount');
         const sliceLinesContainer = document.getElementById('sliceLines');
         const slicePreview = document.getElementById('slicePreview');
-        // 获取用于显示图片高度的元素
         const imageHeightElement = document.getElementById('imageHeight');
         const heightValueElement = document.getElementById('heightValue');
 
@@ -318,8 +323,7 @@
 
                 // 创建一个元素来显示切片高度
                 const heightInfo = document.createElement('p');
-                // 添加 "高度" 二字和 px 单位
-                heightInfo.textContent = `高度: ${sliceCanvas.height}px`;
+                heightInfo.textContent = `${sliceCanvas.height}px`;
 
                 // 添加切片高度信息到容器
                 sliceItem.appendChild(heightInfo);
