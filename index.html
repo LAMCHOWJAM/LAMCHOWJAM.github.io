@@ -133,7 +133,7 @@
                 <i class="fas fa-cut"></i>
                 <h2>智能抠图</h2>
                 <p>快速去除图片背景</p>
-                <a id="cutoutBtn" href="#">开始使用</a>
+                <a id="cutoutBtn" href="remove.html">开始使用</a>
             </div>
         </div>
     </div>
@@ -146,19 +146,8 @@
         cutoutBtn.addEventListener('click', function (event) {
             // 阻止按钮默认跳转行为
             event.preventDefault();
-            // 使用 SweetAlert2 显示自定义对话框
-            Swal.fire({
-                title: '提示',
-                text: '功能尚未开放，敬请期待',
-                icon: 'info',
-                confirmButtonText: '确定',
-                customClass: {
-                    popup: 'swal2-popup',
-                    title: 'swal2-title',
-                    content: 'swal2-content',
-                    confirmButton: 'swal2-confirm'
-                }
-            });
+            // 跳转到 remove.html 页面
+            window.location.href = 'remove.html';
         });
     </script>
 </body>
