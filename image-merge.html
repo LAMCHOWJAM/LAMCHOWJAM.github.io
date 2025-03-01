@@ -20,6 +20,7 @@
             align-items: center;
             min-height: 100vh;
             flex-direction: column;
+            position: relative;
         }
 
         h1 {
@@ -148,10 +149,34 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+
+        /* 返回主菜单按钮样式 */
+        .back-to-menu {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .back-to-menu:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
     </style>
 </head>
 
 <body>
+    <a href="index.html" class="back-to-menu">返回主菜单</a>
     <div class="container">
         <h1>图片拼接工具</h1>
         <!-- 文件上传区域 -->
