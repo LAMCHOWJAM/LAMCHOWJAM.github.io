@@ -302,7 +302,7 @@
                     saveButton.classList.remove('hidden');
                 } catch (error) {
                     console.error('抠图失败:', error);
-                    alert('抠图失败，请检查 API Key 或网络连接！');
+                    alert('抠图失败，请检查网络是否连接或稍后再试！');
                 } finally {
                     // 隐藏加载对话框
                     const loadingDialog = document.getElementById('loadingDialog');
