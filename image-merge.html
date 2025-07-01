@@ -4,7 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 引用 favicon.png 作为浏览器图标 -->
     <link rel="icon" href="favicon.png" type="image/png">
     <title>图片拼接工具</title>
     <style>
@@ -62,16 +61,16 @@
         }
 
         .image-preview img {
-            max-width: 100px;
-            max-height: 100px;
+            max-width: 150px;
+            max-height: 150px;
             border-radius: 5px;
             border: 1px solid #ddd;
             cursor: move;
-            /* 新增拖动样式 */
             opacity: 1;
             transition: opacity 0.3s;
             position: relative;
             transition: transform 0.3s;
+            object-fit: contain;
         }
 
         /* 拖动时的样式 */
@@ -117,13 +116,37 @@
         /* 导出选项 */
         .export-options {
             margin-bottom: 20px;
+            display: none;
         }
 
         .export-options label {
             margin-right: 10px;
         }
 
+        /* 宽度显示 - 美化后的样式 */
+        .width-display {
+            margin: 10px 0;
+            font-size: 16px;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: none;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .width-display span {
+            font-weight: bold;
+            color: #fff;
+        }
+
         /* 操作按钮 */
+        .actions {
+            display: none;
+        }
+
         .actions button {
             padding: 10px 20px;
             background: #007BFF;
@@ -132,16 +155,22 @@
             border-radius: 5px;
             cursor: pointer;
             margin: 5px;
+            transition: all 0.3s ease;
         }
 
         .actions button:hover {
             background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .actions button:active {
+            transform: translateY(0);
         }
 
         /* 拼接结果区域 */
         .result {
             margin-top: 20px;
-            display: none; /* 初始隐藏 */
+            display: none;
         }
 
         .result canvas {
@@ -172,6 +201,73 @@
             background: rgba(255, 255, 255, 0.2);
             transform: translateY(-3px);
         }
+
+        /* 弹出框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            width: 300px;
+            max-width: 90%;
+        }
+
+        .modal-header {
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .modal-btn {
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .modal-btn-primary {
+            background: #007BFF;
+            color: white;
+        }
+
+        .modal-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
     </style>
 </head>
 
@@ -184,8 +280,10 @@
             <p>点击或拖拽图片到此区域上传</p>
             <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
         </div>
+        <!-- 宽度显示 -->
+        <div class="width-display" id="widthDisplay">宽度: <span id="widthValue">0</span>px</div>
         <!-- 导出选项 -->
-        <div class="export-options">
+        <div class="export-options" id="exportOptions">
             <label>导出格式：</label>
             <select id="formatSelect">
                 <option value="jpg">JPG</option>
@@ -194,14 +292,29 @@
             </select>
         </div>
         <!-- 操作按钮 -->
-        <div class="actions">
+        <div class="actions" id="actionButtons">
             <button onclick="clearImages()">清空图片</button>
             <button onclick="sortImages()">一键排序</button>
+            <button onclick="showWidthModal()">修改尺寸</button>
             <button onclick="exportImage()">导出图片</button>
         </div>
         <!-- 拼接结果区域 -->
         <div class="result" id="resultArea">
             <canvas id="resultCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- 宽度调整弹出框 -->
+    <div class="modal" id="widthModal">
+        <div class="modal-content">
+            <div class="modal-header">调整图片宽度</div>
+            <div class="modal-body">
+                <input type="number" id="widthInput" class="modal-input" min="100" step="10" placeholder="输入宽度(px)">
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-secondary" onclick="hideWidthModal()">取消</button>
+                <button class="modal-btn modal-btn-primary" onclick="applyWidth()">确定</button>
+            </div>
         </div>
     </div>
 
@@ -212,12 +325,75 @@
         const formatSelect = document.getElementById('formatSelect');
         const resultArea = document.getElementById('resultArea');
         const resultCanvas = document.getElementById('resultCanvas');
+        const widthDisplay = document.getElementById('widthDisplay');
+        const widthValue = document.getElementById('widthValue');
+        const widthModal = document.getElementById('widthModal');
+        const widthInput = document.getElementById('widthInput');
+        const exportOptions = document.getElementById('exportOptions');
+        const actionButtons = document.getElementById('actionButtons');
         const ctx = resultCanvas.getContext('2d');
         let imagePreview;
 
         let images = [];
         let draggedImageIndex = null;
         let selectedImage = null;
+        let currentWidth = 0;
+
+        // 显示功能区域
+        function showFunctionality() {
+            exportOptions.style.display = 'block';
+            actionButtons.style.display = 'block';
+            widthDisplay.style.display = 'block';
+        }
+
+        // 更新宽度显示
+        function updateWidthDisplay() {
+            if (images.length > 0) {
+                currentWidth = images[0].width;
+                widthValue.textContent = currentWidth;
+            }
+        }
+
+        // 显示宽度调整弹出框
+        function showWidthModal() {
+            if (images.length === 0) {
+                alert('请先添加图片！');
+                return;
+            }
+            widthInput.value = currentWidth;
+            widthModal.style.display = 'flex';
+        }
+
+        // 隐藏宽度调整弹出框
+        function hideWidthModal() {
+            widthModal.style.display = 'none';
+        }
+
+        // 应用新宽度
+        function applyWidth() {
+            const newWidth = parseInt(widthInput.value);
+            if (isNaN(newWidth) || newWidth < 100) {
+                alert('请输入有效的宽度值（至少100px）');
+                return;
+            }
+
+            for (let i = 0; i < images.length; i++) {
+                const img = images[i];
+                const aspectRatio = img.height / img.width;
+                img.width = newWidth;
+                img.height = newWidth * aspectRatio;
+            }
+
+            // 重新渲染预览区域
+            imagePreview.innerHTML = '';
+            for (const img of images) {
+                renderPreview(img, img.name);
+            }
+
+            updatePreview();
+            updateWidthDisplay();
+            hideWidthModal();
+        }
 
         // 点击上传区域触发文件选择
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -256,7 +432,13 @@
                 imagePreview.id = 'imagePreview';
                 const exportOptions = document.querySelector('.export-options');
                 uploadArea.parentNode.insertBefore(imagePreview, exportOptions);
+                
+                // 显示功能区域
+                showFunctionality();
             }
+
+            // 记录第一张图片的宽度（如果有的话）
+            const firstImageWidth = images.length > 0 ? images[0].width : null;
 
             // 按顺序处理文件
             for (let i = 0; i < fileArray.length; i++) {
@@ -265,12 +447,19 @@
                 reader.onload = (e) => {
                     const img = new Image();
                     img.src = e.target.result;
-                    img.name = file.name; // 添加文件名属性
+                    img.name = file.name;
                     img.onload = () => {
+                        // 如果有第一张图片的宽度，调整当前图片尺寸
+                        if (firstImageWidth && img.width !== firstImageWidth) {
+                            const aspectRatio = img.height / img.width;
+                            img.height = firstImageWidth * aspectRatio;
+                            img.width = firstImageWidth;
+                        }
+                        
                         images.push(img);
-                        renderPreview(img, file.name); // 传递文件名
-                        // 添加图片后直接更新预览图
+                        renderPreview(img, file.name);
                         updatePreview();
+                        updateWidthDisplay();
                     };
                 };
                 reader.readAsDataURL(file);
@@ -284,10 +473,10 @@
 
             // 添加文件名显示
             const fileNameElement = document.createElement('p');
-            fileNameElement.textContent = fileName; // 显示文件名
-            fileNameElement.style.margin = '0 0 5px 0'; // 调整样式
-            fileNameElement.style.fontSize = '12px'; // 调整字体大小
-            fileNameElement.style.color = '#fff'; // 调整字体颜色
+            fileNameElement.textContent = fileName;
+            fileNameElement.style.margin = '0 0 5px 0';
+            fileNameElement.style.fontSize = '12px';
+            fileNameElement.style.color = '#fff';
 
             const imgElement = document.createElement('img');
             imgElement.src = img.src;
@@ -339,7 +528,7 @@
             deleteIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const index = Array.from(imagePreview.children).indexOf(imgWrapper);
-                if (index!== -1) {
+                if (index !== -1) {
                     // 从数组中移除图片
                     images.splice(index, 1);
                     // 移除图片元素和删除图标
@@ -348,10 +537,14 @@
                     if (images.length === 0) {
                         imagePreview.remove();
                         imagePreview = null;
-                        resultArea.style.display = 'none'; // 隐藏拼接结果区域
+                        resultArea.style.display = 'none';
+                        exportOptions.style.display = 'none';
+                        actionButtons.style.display = 'none';
+                        widthDisplay.style.display = 'none';
                     }
                     // 更新预览图
                     updatePreview();
+                    updateWidthDisplay();
                     // 取消选中状态
                     if (selectedImage === imgElement) {
                         selectedImage = null;
@@ -360,9 +553,9 @@
             });
 
             // 将文件名和图片添加到容器中
-            imgWrapper.appendChild(fileNameElement); // 先添加文件名
-            imgWrapper.appendChild(imgElement); // 再添加图片
-            imgWrapper.appendChild(deleteIcon); // 最后添加删除图标
+            imgWrapper.appendChild(fileNameElement);
+            imgWrapper.appendChild(imgElement);
+            imgWrapper.appendChild(deleteIcon);
             imagePreview.appendChild(imgWrapper);
         }
 
@@ -381,10 +574,10 @@
         // 拖动进入
         function dragEnter(e) {
             e.preventDefault();
-            if (draggedImageIndex!== null) {
+            if (draggedImageIndex !== null) {
                 const targetImgWrapper = this.parentNode;
                 const targetIndex = Array.from(imagePreview.children).indexOf(targetImgWrapper);
-                if (draggedImageIndex!== targetIndex) {
+                if (draggedImageIndex !== targetIndex) {
                     this.style.transform = 'scale(1.2)';
                 }
             }
@@ -400,7 +593,7 @@
             const targetImgWrapper = this.parentNode;
             const targetIndex = Array.from(imagePreview.children).indexOf(targetImgWrapper);
             const draggedImgWrapper = imagePreview.children[draggedImageIndex];
-            if (draggedImageIndex!== null && draggedImageIndex!== targetIndex) {
+            if (draggedImageIndex !== null && draggedImageIndex !== targetIndex) {
                 // 交换数组中的元素
                 const draggedImage = images[draggedImageIndex];
                 images.splice(draggedImageIndex, 1);
@@ -409,11 +602,8 @@
                 // 重新渲染预览区域
                 imagePreview.innerHTML = '';
                 for (const img of images) {
-                    // 获取文件名
-                    const fileName = img.name || '未命名'; // 如果图片没有名称，使用默认值
-                    renderPreview(img, fileName); // 传递文件名
+                    renderPreview(img, img.name);
                 }
-                // 拖动后更新预览图
                 updatePreview();
             }
         }
@@ -433,30 +623,32 @@
             if (images.length === 0) {
                 resultCanvas.width = 0;
                 resultCanvas.height = 0;
-                resultArea.style.display = 'none'; // 隐藏拼接结果区域
+                resultArea.style.display = 'none';
                 return;
             }
 
-            // 计算画布尺寸
+            // 计算画布尺寸 - 使用统一后的尺寸
             let totalHeight = 0;
-            let maxWidth = 0;
+            const unifiedWidth = images[0].width; // 使用第一张图的宽度作为统一宽度
+            
+            // 计算总高度
             for (const img of images) {
                 totalHeight += img.height;
-                maxWidth = Math.max(maxWidth, img.width);
             }
 
             // 设置画布尺寸
-            resultCanvas.width = maxWidth;
+            resultCanvas.width = unifiedWidth;
             resultCanvas.height = totalHeight;
 
-            // 绘制图片
+            // 绘制图片 - 使用统一后的尺寸
             let y = 0;
             for (const img of images) {
-                ctx.drawImage(img, 0, y);
+                // 保持宽高比绘制
+                ctx.drawImage(img, 0, y, unifiedWidth, img.height);
                 y += img.height;
             }
 
-            resultArea.style.display = 'block'; // 显示拼接结果区域
+            resultArea.style.display = 'block';
         }
 
         // 清空图片
@@ -467,10 +659,12 @@
                 imagePreview.remove();
                 imagePreview = null;
             }
-            resultArea.style.display = 'none'; // 隐藏拼接结果区域
+            resultArea.style.display = 'none';
             ctx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
-            // 重置文件输入框的值
             fileInput.value = '';
+            exportOptions.style.display = 'none';
+            actionButtons.style.display = 'none';
+            widthDisplay.style.display = 'none';
         }
 
         // 一键排序
@@ -486,10 +680,9 @@
             // 重新渲染预览区域
             imagePreview.innerHTML = '';
             for (const img of images) {
-                renderPreview(img, img.name); // 传递文件名
+                renderPreview(img, img.name);
             }
 
-            // 更新拼接结果
             updatePreview();
         }
 
@@ -503,7 +696,6 @@
             const format = formatSelect.value;
             let dataURL;
             if (format === 'jpg') {
-                // 导出 JPG 格式时指定质量为 0.9（可根据需要调整）
                 dataURL = resultCanvas.toDataURL('image/jpeg', 0.9);
             } else {
                 dataURL = resultCanvas.toDataURL(`image/${format}`);
